@@ -1,0 +1,125 @@
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Coordinates {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+impl Coordinates {
+    pub fn new(lat: f64, lon: f64) -> Self {
+        Self {
+            latitude: lat,
+            longitude: lon,
+        }
+    }
+
+    pub fn distance_to(&self, other: &Coordinates) -> f64 {
+        let r = 6371000.0;
+        let lat1 = self.latitude.to_radians();
+        let lat2 = other.latitude.to_radians();
+        let dlat = (other.latitude - self.latitude).to_radians();
+        let dlon = (other.longitude - self.longitude).to_radians();
+
+        let a = (dlat / 2.0).sin() * (dlat / 2.0).sin()
+            + lat1.cos() * lat2.cos() * (dlon / 2.0).sin() * (dlon / 2.0).sin();
+        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+
+        r * c
+    }
+}
+
+impl fmt::Display for Coordinates {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:.6}, {:.6}", self.latitude, self.longitude)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Location {
+    pub coordinates: Coordinates,
+    pub accuracy: f64,
+    pub source: LocationSource,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub region: Option<String>,
+}
+
+impl Location {
+    pub fn new(coords: Coordinates, accuracy: f64, source: LocationSource) -> Self {
+        Self {
+            coordinates: coords,
+            accuracy,
+            source,
+            city: None,
+            country: None,
+            region: None,
+        }
+    }
+
+    pub fn with_address(mut self, city: &str, country: &str, region: &str) -> Self {
+        self.city = Some(city.to_string());
+        self.country = Some(country.to_string());
+        self.region = Some(region.to_string());
+        self
+    }
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let addr = match (&self.city, &self.country) {
+            (Some(city), Some(country)) => format!(", {}, {}", city, country),
+            (Some(city), None) => format!(", {}", city),
+            _ => String::new(),
+        };
+        write!(
+            f,
+            "{} (±{:.0}m){}",
+            self.coordinates, self.accuracy, addr
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LocationSource {
+    Gps,
+    Ip,
+    Timezone,
+    Manual,
+}
+
+impl fmt::Display for LocationSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LocationSource::Gps => write!(f, "GPS"),
+            LocationSource::Ip => write!(f, "IP"),
+            LocationSource::Timezone => write!(f, "Timezone"),
+            LocationSource::Manual => write!(f, "Manual"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum LocationError {
+    NoProvidersAvailable,
+    ProviderFailed(String),
+    NetworkError(String),
+    ParseError(String),
+    Timeout,
+    PermissionDenied,
+}
+
+impl fmt::Display for LocationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LocationError::NoProvidersAvailable => write!(f, "No location providers available"),
+            LocationError::ProviderFailed(p) => write!(f, "Provider failed: {}", p),
+            LocationError::NetworkError(e) => write!(f, "Network error: {}", e),
+            LocationError::ParseError(e) => write!(f, "Parse error: {}", e),
+            LocationError::Timeout => write!(f, "Request timed out"),
+            LocationError::PermissionDenied => write!(f, "Permission denied"),
+        }
+    }
+}
+
+impl std::error::Error for LocationError {}

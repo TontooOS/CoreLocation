@@ -1,6 +1,6 @@
-# Tontoo Name
+# Tontoo CoreLocation
 
-Description
+A Framework for Location, Users Location and Processing it
 
 ## Made for TontooOS
 
@@ -12,7 +12,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-name = { path = "/Library/System/name.library" }
+corelocation = { path = "/Library/System/corelocation.library" }
 ```
 
 ## License
