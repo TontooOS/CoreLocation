@@ -290,3 +290,127 @@ pub fn query(bssids: &[String]) -> Result<Vec<WifiApResult>, LocationError> {
 
     parse_response(&bytes[RESPONSE_HEADER_LEN..])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn varint_roundtrip() {
+        for value in [0u64, 1, 127, 128, 300, 5252000000, u64::MAX] {
+            let mut buf = Vec::new();
+            encode_varint(&mut buf, value);
+            let mut reader = Reader::new(&buf);
+            assert_eq!(reader.read_varint(), Some(value), "roundtrip failed for {}", value);
+        }
+    }
+
+    #[test]
+    fn zigzag_known_values() {
+        assert_eq!(zigzag32(0), 0);
+        assert_eq!(zigzag32(-1), 1);
+        assert_eq!(zigzag32(1), 2);
+        assert_eq!(zigzag32(-2), 3);
+        assert_eq!(zigzag32(400), 800);
+    }
+
+    #[test]
+    fn request_has_arpc_header_and_payload() {
+        let body = build_request(&["AA:BB:CC:DD:EE:FF".to_string()]);
+
+        assert_eq!(&body[0..2], &[0x00, 0x01]);
+        assert_eq!(&body[2..4], &[0x00, 0x0A]);
+        assert_eq!(&body[4..14], b"en-001_001");
+        assert_eq!(&body[14..16], &[0x00, 0x13]);
+        assert_eq!(&body[16..35], b"com.apple.locationd");
+        assert_eq!(&body[35..37], &[0x00, 0x0D]);
+        assert_eq!(&body[37..50], b"18.6.2.22G100");
+        assert_eq!(&body[50..54], &[0x00, 0x00, 0x00, 0x01]);
+
+        let payload_len = u32::from_be_bytes([body[54], body[55], body[56], body[57]]) as usize;
+        assert_eq!(body.len(), 58 + payload_len);
+        assert!(body[58..].windows(17).any(|w| w == b"AA:BB:CC:DD:EE:FF"));
+    }
+
+    #[test]
+    fn parses_crafted_response() {
+        let mut location = Vec::new();
+        encode_tag(&mut location, 1, 0);
+        encode_varint(&mut location, (52.52 * 1e8) as i64 as u64);
+        encode_tag(&mut location, 2, 0);
+        encode_varint(&mut location, (13.405 * 1e8) as i64 as u64);
+        encode_tag(&mut location, 3, 0);
+        encode_varint(&mut location, 42);
+
+        let mut device = Vec::new();
+        encode_string_field(&mut device, 1, "aa:bb:cc:dd:ee:ff");
+        encode_message_field(&mut device, 2, &location);
+
+        let mut block = Vec::new();
+        encode_message_field(&mut block, 2, &device);
+
+        let mut body = vec![0u8; RESPONSE_HEADER_LEN];
+        body.extend_from_slice(&block);
+
+        let results = parse_response(&body).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].bssid, "aa:bb:cc:dd:ee:ff");
+        assert!((results[0].latitude - 52.52).abs() < 1e-9);
+        assert!((results[0].longitude - 13.405).abs() < 1e-9);
+        assert_eq!(results[0].accuracy_m, Some(42.0));
+    }
+
+    #[test]
+    fn drops_invalid_coordinates() {
+        let mut location = Vec::new();
+        encode_tag(&mut location, 1, 0);
+        encode_varint(&mut location, (-180.0 * 1e8) as i64 as u64);
+        encode_tag(&mut location, 2, 0);
+        encode_varint(&mut location, (-180.0 * 1e8) as i64 as u64);
+
+        let mut device = Vec::new();
+        encode_string_field(&mut device, 1, "aa:bb:cc:dd:ee:ff");
+        encode_message_field(&mut device, 2, &location);
+
+        let mut block = Vec::new();
+        encode_message_field(&mut block, 2, &device);
+
+        let results = parse_response(&block).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn skips_unknown_fields() {
+        let mut location = Vec::new();
+        encode_tag(&mut location, 1, 0);
+        encode_varint(&mut location, (52.52 * 1e8) as i64 as u64);
+        encode_tag(&mut location, 2, 0);
+        encode_varint(&mut location, (13.405 * 1e8) as i64 as u64);
+
+        let mut device = Vec::new();
+        encode_string_field(&mut device, 1, "aa:bb:cc:dd:ee:ff");
+        encode_message_field(&mut device, 2, &location);
+
+        let mut block = Vec::new();
+        encode_tag(&mut block, 3, 0);
+        encode_varint(&mut block, 99);
+        encode_string_field(&mut block, 5, "unknown-app-id");
+        encode_message_field(&mut block, 2, &device);
+
+        let results = parse_response(&block).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].bssid, "aa:bb:cc:dd:ee:ff");
+    }
+
+    #[test]
+    fn drops_devices_without_location() {
+        let mut device = Vec::new();
+        encode_string_field(&mut device, 1, "aa:bb:cc:dd:ee:ff");
+
+        let mut block = Vec::new();
+        encode_message_field(&mut block, 2, &device);
+
+        let results = parse_response(&block).unwrap();
+        assert!(results.is_empty());
+    }
+}

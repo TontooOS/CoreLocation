@@ -112,10 +112,10 @@ fn parse_nmcli_output(stdout: &str) -> Vec<AccessPoint> {
             continue;
         }
 
-        let bssid = parts[..6].join(":");
-        if bssid.len() != 17 || !bssid.chars().all(|c| c.is_ascii_hexdigit() || c == ':') {
+        let raw = parts[..6].join(":");
+        let Some(bssid) = normalize_bssid(&raw) else {
             continue;
-        }
+        };
 
         let signal_pct: i32 = match parts[6].trim().parse() {
             Ok(v) => v,
@@ -188,5 +188,92 @@ pub fn scan_access_points() -> Result<Vec<AccessPoint>, LocationError> {
         scan_netsh()
     } else {
         scan_nmcli()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bssid_normalization() {
+        assert_eq!(
+            normalize_bssid("A0:F3:C1:3B:6F:90"),
+            Some("a0:f3:c1:3b:6f:90".to_string())
+        );
+        assert_eq!(
+            normalize_bssid("00-1c-42-1f-65-e9"),
+            Some("00:1c:42:1f:65:e9".to_string())
+        );
+        assert_eq!(normalize_bssid("a0:f3:c1"), None);
+        assert_eq!(normalize_bssid("zz:zz:zz:zz:zz:zz"), None);
+        assert_eq!(normalize_bssid("hello"), None);
+    }
+
+    #[test]
+    fn parses_netsh_output() {
+        let sample = "\
+Interface name : WLAN
+There are 3 networks currently visible.
+
+SSID 1 : HomeNet
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    Encryption              : CCMP
+    BSSID 1                 : a0:f3:c1:3b:6f:90
+         Signal             : 82%
+         Radio type         : 802.11n
+         Channel            : 6
+    BSSID 2                 : a0:f3:c1:3b:6f:91
+         Signal             : 40%
+         Radio type         : 802.11n
+
+SSID 2 : CafeGuest
+    Authentication          : Open
+    BSSID 1                 : 00-1C-42-1F-65-E9
+         Signal             : 55%
+";
+
+        let aps = parse_netsh_output(sample);
+        assert_eq!(aps.len(), 3);
+        assert_eq!(aps[0].bssid, "a0:f3:c1:3b:6f:90");
+        assert_eq!(aps[0].signal_pct, 82);
+        assert_eq!(aps[1].bssid, "00:1c:42:1f:65:e9");
+        assert_eq!(aps[1].signal_pct, 55);
+        assert_eq!(aps[2].bssid, "a0:f3:c1:3b:6f:91");
+        assert_eq!(aps[2].signal_pct, 40);
+    }
+
+    #[test]
+    fn parses_nmcli_output_and_dedups() {
+        let sample = "\
+A0:F3:C1:3B:6F:90:82:HomeNet
+A0:F3:C1:3B:6F:90:64:HomeNet
+A0:F3:C1:3B:6F:91:40:Hidden\\ Network
+00:1C:42:1F:65:E9:55:Cafe
+not-a-mac-line
+";
+
+        let aps = parse_nmcli_output(sample);
+        assert_eq!(aps.len(), 3);
+        assert_eq!(aps[0].bssid, "a0:f3:c1:3b:6f:90");
+        assert_eq!(aps[0].signal_pct, 82);
+        assert_eq!(aps[2].bssid, "a0:f3:c1:3b:6f:91");
+    }
+
+    #[test]
+    fn truncates_to_strongest() {
+        let mut strongest = std::collections::HashMap::new();
+        for i in 0..20 {
+            collect(
+                &mut strongest,
+                format!("aa:bb:cc:dd:ee:{:02x}", i),
+                (i as i32) * 5,
+            );
+        }
+
+        let aps = finish(strongest);
+        assert_eq!(aps.len(), MAX_ACCESS_POINTS);
+        assert_eq!(aps[0].signal_pct, 95);
     }
 }

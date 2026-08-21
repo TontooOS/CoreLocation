@@ -104,3 +104,26 @@ pub fn query_single(bssid: &str) -> Result<(f64, f64, f64), LocationError> {
     let url = format!("{}?v=1.1&data=open&bssid={}", API_URL, bssid);
     request(&url)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base64_rfc4648_vectors() {
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"f"), "Zg==");
+        assert_eq!(base64_encode(b"fo"), "Zm8=");
+        assert_eq!(base64_encode(b"foo"), "Zm9v");
+        assert_eq!(base64_encode(b"foob"), "Zm9vYg==");
+        assert_eq!(base64_encode(b"fooba"), "Zm9vYmE=");
+        assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn dbm_conversion() {
+        assert_eq!(signal_pct_to_dbm(100), -50);
+        assert_eq!(signal_pct_to_dbm(50), -75);
+        assert_eq!(signal_pct_to_dbm(0), -100);
+    }
+}

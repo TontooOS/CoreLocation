@@ -68,11 +68,27 @@ pub fn available_providers(&self) -> Vec<String>
 Returns the names of all providers whose `is_available()` currently returns
 true.
 
+    pub async fn get_location_from_async(
+        &self,
+        source: LocationSource,
+    ) -> Result<Location, LocationError>
+```
+
+Async variants of the methods above. They run the blocking provider chain on
+the tokio blocking thread pool (`tokio::task::spawn_blocking`), so calling them
+from an async context (GTK app event loop with a tokio runtime) never blocks
+the executor.
+
+- Returns `Err(LocationError::ProviderFailed)` when the blocking task panics or
+  no provider with the requested source succeeds.
+
 ## Free Functions
 
 ```rust
 pub fn get_location() -> Result<Location, LocationError>
 pub fn get_location_from(source: LocationSource) -> Result<Location, LocationError>
+pub async fn get_location_async() -> Result<Location, LocationError>
+pub async fn get_location_from_async(source: LocationSource) -> Result<Location, LocationError>
 ```
 
 Convenience wrappers that create a fresh `CoreLocation` per call. No caching
@@ -162,7 +178,17 @@ match wifi {
 }
 ```
 
+Async (inside a tokio runtime):
+
+```rust
+use corelocation::get_location_async;
+
+let loc = get_location_async().await.unwrap();
+println!("{}", loc);
+```
+
 ## Cross References
 
 - [Providers.md](Providers.md) – how providers are selected and prioritized
 - [WifiPositioning.md](WifiPositioning.md) – internals of the WiFi provider
+- [Localization.md](Localization.md) – localized error messages

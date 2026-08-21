@@ -126,3 +126,41 @@ impl fmt::Display for LocationError {
 }
 
 impl std::error::Error for LocationError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn haversine_berlin_munich() {
+        let berlin = Coordinates::new(52.5200, 13.4050);
+        let munich = Coordinates::new(48.1351, 11.5820);
+        let dist = berlin.distance_to(&munich);
+        assert!((dist - 504_000.0).abs() < 5_000.0, "got {}m", dist);
+    }
+
+    #[test]
+    fn display_formats() {
+        let coords = Coordinates::new(52.52, 13.405);
+        assert_eq!(coords.to_string(), "52.520000, 13.405000");
+
+        let loc = Location::new(coords, 42.0, LocationSource::Wifi)
+            .with_address("Idstein", "Deutschland", "Hessen");
+        assert_eq!(
+            loc.to_string(),
+            "52.520000, 13.405000 (±42m), Idstein, Deutschland"
+        );
+    }
+
+    #[test]
+    fn error_messages_localized() {
+        assert_eq!(
+            LocationError::NoProvidersAvailable.to_string(),
+            lang::t("no_providers_available")
+        );
+        assert_eq!(
+            LocationError::Timeout.to_string(),
+            lang::t("timeout")
+        );
+    }
+}

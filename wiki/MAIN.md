@@ -14,9 +14,10 @@ without requiring any API keys.
 |---|---|---|
 | Main index | [MAIN.md](MAIN.md) | This page |
 | Rules | [RULE.md](RULE.md) | Development and usage rules |
-| Location | [Location.md](Location.md) | `CoreLocation` client, caching, types and errors |
+| Location | [Location.md](Location.md) | `CoreLocation` client, caching, blocking and async API |
 | Providers | [Providers.md](Providers.md) | Provider trait, provider priority, GPS/IP/Timezone providers |
 | WiFi Positioning | [WifiPositioning.md](WifiPositioning.md) | Access point scanning, Apple WLOC, Mylnikov fallback, reverse geocoding |
+| Localization | [Localization.md](Localization.md) | Error message localization via `lang/en_us.json` and `lang/de_de.json` |
 
 ## Quick Start
 
@@ -34,6 +35,9 @@ See [Location.md](Location.md) for details.
 
 ## Changelog
 
+- 2026-08-21: Added async API (`get_location_async`), error message localization
+  (`src/lang.rs`, `lang/`) and 19 offline unit tests for the WiFi protocol,
+  parsers and localization.
 - 2026-08-21: Added a Windows `netsh` scanner so WiFi positioning works on
   Windows too; verified live with a ±32m fix.
 - 2026-08-21: Added the WiFi positioning provider (Apple WLOC + Mylnikov +

@@ -1,4 +1,5 @@
 pub mod geocode;
+pub mod lang;
 pub mod providers;
 pub mod types;
 
@@ -68,6 +69,23 @@ impl CoreLocation {
         )))
     }
 
+    pub async fn get_location_async(&self) -> Result<Location, LocationError> {
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || this.get_location())
+            .await
+            .map_err(|e| LocationError::ProviderFailed(e.to_string()))?
+    }
+
+    pub async fn get_location_from_async(
+        &self,
+        source: LocationSource,
+    ) -> Result<Location, LocationError> {
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || this.get_location_from(source))
+            .await
+            .map_err(|e| LocationError::ProviderFailed(e.to_string()))?
+    }
+
     pub fn clear_cache(&self) {
         if let Ok(mut cache) = self.cache.lock() {
             *cache = None;
@@ -96,4 +114,12 @@ pub fn get_location() -> Result<Location, LocationError> {
 
 pub fn get_location_from(source: LocationSource) -> Result<Location, LocationError> {
     CoreLocation::new().get_location_from(source)
+}
+
+pub async fn get_location_async() -> Result<Location, LocationError> {
+    CoreLocation::new().get_location_async().await
+}
+
+pub async fn get_location_from_async(source: LocationSource) -> Result<Location, LocationError> {
+    CoreLocation::new().get_location_from_async(source).await
 }
