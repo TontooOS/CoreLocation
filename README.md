@@ -12,7 +12,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-corelocation = { path = "/Library/System/corelocation.library" }
+corelocation = { path = "/Library/System/corelocation" }
 ```
 
 ## License
