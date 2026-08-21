@@ -118,7 +118,6 @@ impl TimezoneProvider {
             "Central Asia Standard Time" => "Asia/Almaty".to_string(),
             "North Asia Standard Time" => "Asia/Krasnoyarsk".to_string(),
             "N. Central Asia Standard Time" => "Asia/Novosibirsk".to_string(),
-            "Tokyo Standard Time" => "Asia/Tokyo".to_string(),
             _ => tz.to_string(),
         }
     }

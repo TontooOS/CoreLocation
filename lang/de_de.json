@@ -1,0 +1,8 @@
+{
+  "no_providers_available": "Keine Standort-Dienste verfuegbar",
+  "provider_failed": "Anbieter fehlgeschlagen: {}",
+  "network_error": "Netzwerkfehler: {}",
+  "parse_error": "Verarbeitungsfehler: {}",
+  "timeout": "Zeitueberschreitung der Anfrage",
+  "permission_denied": "Zugriff verweigert"
+}

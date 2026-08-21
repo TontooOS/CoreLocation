@@ -1,6 +1,7 @@
 pub mod gps;
 pub mod ip;
 pub mod timezone;
+pub mod wifi;
 
 use crate::types::{Location, LocationError};
 
@@ -13,6 +14,7 @@ pub trait LocationProvider {
 pub fn get_all_providers() -> Vec<Box<dyn LocationProvider>> {
     vec![
         Box::new(gps::GpsProvider::new()),
+        Box::new(wifi::WifiProvider::new()),
         Box::new(ip::IpProvider::new()),
         Box::new(timezone::TimezoneProvider::new()),
     ]

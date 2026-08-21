@@ -1,3 +1,4 @@
+use crate::lang;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -83,6 +84,7 @@ impl fmt::Display for Location {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LocationSource {
     Gps,
+    Wifi,
     Ip,
     Timezone,
     Manual,
@@ -92,6 +94,7 @@ impl fmt::Display for LocationSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LocationSource::Gps => write!(f, "GPS"),
+            LocationSource::Wifi => write!(f, "WiFi"),
             LocationSource::Ip => write!(f, "IP"),
             LocationSource::Timezone => write!(f, "Timezone"),
             LocationSource::Manual => write!(f, "Manual"),
@@ -112,12 +115,12 @@ pub enum LocationError {
 impl fmt::Display for LocationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LocationError::NoProvidersAvailable => write!(f, "No location providers available"),
-            LocationError::ProviderFailed(p) => write!(f, "Provider failed: {}", p),
-            LocationError::NetworkError(e) => write!(f, "Network error: {}", e),
-            LocationError::ParseError(e) => write!(f, "Parse error: {}", e),
-            LocationError::Timeout => write!(f, "Request timed out"),
-            LocationError::PermissionDenied => write!(f, "Permission denied"),
+            LocationError::NoProvidersAvailable => write!(f, "{}", lang::t("no_providers_available")),
+            LocationError::ProviderFailed(p) => write!(f, "{}", lang::t_fmt("provider_failed", p)),
+            LocationError::NetworkError(e) => write!(f, "{}", lang::t_fmt("network_error", e)),
+            LocationError::ParseError(e) => write!(f, "{}", lang::t_fmt("parse_error", e)),
+            LocationError::Timeout => write!(f, "{}", lang::t("timeout")),
+            LocationError::PermissionDenied => write!(f, "{}", lang::t("permission_denied")),
         }
     }
 }

@@ -4,48 +4,54 @@ use std::time::Duration;
 fn main() {
     println!("=== CoreLocation Test ===\n");
 
-    println!("Verfügbare Provider:");
+    println!("Available providers:");
     let client = CoreLocation::new();
     for provider in client.available_providers() {
         println!("  - {}", provider);
     }
 
-    println!("\n--- Test 1: Beste Location ---");
+    println!("\n--- Test 1: Best location ---");
     match get_location() {
         Ok(loc) => {
             println!("Location: {}", loc);
-            println!("Koordinaten: {}", loc.coordinates);
-            println!("Genauigkeit: ±{:.0}m", loc.accuracy);
-            println!("Quelle: {}", loc.source);
+            println!("Coordinates: {}", loc.coordinates);
+            println!("Accuracy: ±{:.0}m", loc.accuracy);
+            println!("Source: {}", loc.source);
             if let Some(city) = &loc.city {
-                println!("Stadt: {}", city);
+                println!("City: {}", city);
             }
             if let Some(country) = &loc.country {
-                println!("Land: {}", country);
+                println!("Country: {}", country);
             }
         }
-        Err(e) => println!("Fehler: {}", e),
+        Err(e) => println!("Error: {}", e),
     }
 
-    println!("\n--- Test 2: IP Location ---");
+    println!("\n--- Test 2: WiFi location ---");
+    match get_location_from(LocationSource::Wifi) {
+        Ok(loc) => println!("WiFi Location: {}", loc),
+        Err(e) => println!("WiFi error: {}", e),
+    }
+
+    println!("\n--- Test 3: IP location ---");
     match get_location_from(LocationSource::Ip) {
         Ok(loc) => println!("IP Location: {}", loc),
-        Err(e) => println!("IP Fehler: {}", e),
+        Err(e) => println!("IP error: {}", e),
     }
 
-    println!("\n--- Test 3: Timezone Location ---");
+    println!("\n--- Test 4: Timezone location ---");
     match get_location_from(LocationSource::Timezone) {
         Ok(loc) => println!("Timezone Location: {}", loc),
-        Err(e) => println!("Timezone Fehler: {}", e),
+        Err(e) => println!("Timezone error: {}", e),
     }
 
-    println!("\n--- Test 4: GPS Location ---");
+    println!("\n--- Test 5: GPS location ---");
     match get_location_from(LocationSource::Gps) {
         Ok(loc) => println!("GPS Location: {}", loc),
-        Err(e) => println!("GPS Fehler: {}", e),
+        Err(e) => println!("GPS error: {}", e),
     }
 
-    println!("\n--- Test 5: Mit Cache ---");
+    println!("\n--- Test 6: With cache ---");
     let cached_client = CoreLocation::new().with_cache_duration(Duration::from_secs(60));
 
     let start = std::time::Instant::now();
@@ -57,14 +63,14 @@ fn main() {
     let duration2 = start.elapsed();
 
     if let (Ok(l1), Ok(l2)) = (&loc1, &loc2) {
-        println!("Erster Aufruf: {} ({:?})", l1, duration1);
-        println!("Zweiter Aufruf (Cache): {} ({:?})", l2, duration2);
-        println!("Cache speedup: {:?} schneller", duration1 - duration2);
+        println!("First call: {} ({:?})", l1, duration1);
+        println!("Second call (cache): {} ({:?})", l2, duration2);
+        println!("Cache speedup: {:?} faster", duration1 - duration2);
     }
 
-    println!("\n--- Test 6: Distanzberechnung ---");
+    println!("\n--- Test 7: Distance calculation ---");
     let berlin = corelocation::Coordinates::new(52.5200, 13.4050);
     let munich = corelocation::Coordinates::new(48.1351, 11.5820);
     let dist = berlin.distance_to(&munich);
-    println!("Berlin → München: {:.0}km", dist / 1000.0);
+    println!("Berlin -> Munich: {:.0}km", dist / 1000.0);
 }

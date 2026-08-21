@@ -3,7 +3,7 @@ name = "corelocation"
 version = "26.1.0"
 edition = "2021"
 license = "TCL"
-description = "Location framework for TontooOS - GPS, IP, Timezone based positioning"
+description = "Location framework for TontooOS - GPS, WiFi, IP, Timezone based positioning"
 authors = ["arlomu"]
 
 [lib]
@@ -13,6 +13,10 @@ path = "src/lib.rs"
 [[example]]
 name = "test_location"
 path = "examples/test_location.rs"
+
+[[example]]
+name = "test_wifi"
+path = "examples/test_wifi.rs"
 
 [dependencies]
 reqwest = { version = "0.11", features = ["json", "blocking"] }

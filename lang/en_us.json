@@ -1,0 +1,8 @@
+{
+  "no_providers_available": "No location providers available",
+  "provider_failed": "Provider failed: {}",
+  "network_error": "Network error: {}",
+  "parse_error": "Parse error: {}",
+  "timeout": "Request timed out",
+  "permission_denied": "Permission denied"
+}

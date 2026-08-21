@@ -1,3 +1,4 @@
+pub mod geocode;
 pub mod providers;
 pub mod types;
 
@@ -52,7 +53,10 @@ impl CoreLocation {
                 continue;
             }
 
-            let loc = provider.get_location()?;
+            let loc = match provider.get_location() {
+                Ok(loc) => loc,
+                Err(_) => continue,
+            };
             if loc.source == source {
                 return Ok(loc);
             }
