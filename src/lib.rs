@@ -123,3 +123,5 @@ pub async fn get_location_async() -> Result<Location, LocationError> {
 pub async fn get_location_from_async(source: LocationSource) -> Result<Location, LocationError> {
     CoreLocation::new().get_location_from_async(source).await
 }
+
+mod ffi;

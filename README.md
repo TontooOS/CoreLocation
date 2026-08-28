@@ -12,7 +12,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-corelocation = { path = "/Library/System/corelocation" }
+sdk = { path = "/Library/System/sdk", features = ["CoreLocation"] }
+```
+
+Then at the crate root:
+
+```rust
+sdk::preinclude!();
+use CoreLocation::{ /* ... */ };
 ```
 
 ## License
