@@ -7,7 +7,7 @@ description = "Location framework for TontooOS - GPS, WiFi, IP, Timezone based p
 authors = ["arlomu"]
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib", "rlib"]
 name = "corelocation"
 path = "src/lib.rs"
 
