@@ -35,6 +35,10 @@ See [Location.md](Location.md) for details.
 
 ## Changelog
 
+- 2026-09-26: HTTP transport moved to NetworkKit (`networkkit::http`) in
+  the IP, geocode, Apple WLOC and Mylnikov providers; the Linux WiFi scan
+  now uses `networkkit::Wifi` instead of a private `nmcli` parser. The
+  `reqwest` dependency is removed.
 - 2026-08-21: Added async API (`get_location_async`), error message localization
   (`src/lang.rs`, `lang/`) and 19 offline unit tests for the WiFi protocol,
   parsers and localization.

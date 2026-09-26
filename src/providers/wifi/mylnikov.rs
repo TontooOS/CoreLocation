@@ -47,26 +47,18 @@ fn signal_pct_to_dbm(signal_pct: i32) -> i32 {
 }
 
 fn request(url: &str) -> Result<(f64, f64, f64), LocationError> {
-    let client = reqwest::blocking::Client::builder()
+    let resp = networkkit::http::HttpRequest::get(url)
         .timeout(Duration::from_secs(8))
-        .build()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+        .send()?;
 
-    let resp = client
-        .get(url)
-        .send()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
-
-    if !resp.status().is_success() {
+    if !resp.is_success() {
         return Err(LocationError::ProviderFailed(format!(
             "Mylnikov API returned status {}",
-            resp.status()
+            resp.status
         )));
     }
 
-    let json: MylnikovResponse = resp
-        .json()
-        .map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let json: MylnikovResponse = resp.json()?;
 
     if json.result != 200 {
         return Err(LocationError::ProviderFailed(format!(

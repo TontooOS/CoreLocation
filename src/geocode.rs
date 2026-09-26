@@ -26,32 +26,24 @@ struct NominatimAddress {
 }
 
 pub fn reverse_geocode(coords: Coordinates) -> Result<AddressInfo, LocationError> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
-
     let url = format!(
         "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={}&lon={}&zoom=10",
         coords.latitude, coords.longitude
     );
 
-    let resp = client
-        .get(&url)
+    let resp = networkkit::http::HttpRequest::get(&url)
+        .timeout(std::time::Duration::from_secs(5))
         .header("User-Agent", USER_AGENT)
-        .send()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+        .send()?;
 
-    if !resp.status().is_success() {
+    if !resp.is_success() {
         return Err(LocationError::ProviderFailed(format!(
             "Nominatim returned status {}",
-            resp.status()
+            resp.status
         )));
     }
 
-    let json: NominatimResponse = resp
-        .json()
-        .map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let json: NominatimResponse = resp.json()?;
 
     let addr = json
         .address

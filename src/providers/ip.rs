@@ -21,19 +21,18 @@ impl IpProvider {
     }
 
     fn try_api(&self, url: &str) -> Result<Location, LocationError> {
-        let client = reqwest::blocking::Client::builder()
+        let resp = networkkit::http::HttpRequest::get(url)
             .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+            .send()?;
 
-        let resp = client
-            .get(url)
-            .send()
-            .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+        if !resp.is_success() {
+            return Err(LocationError::ProviderFailed(format!(
+                "IP API returned status {}",
+                resp.status
+            )));
+        }
 
-        let ip: IpResponse = resp
-            .json()
-            .map_err(|e| LocationError::ParseError(e.to_string()))?;
+        let ip: IpResponse = resp.json()?;
 
         if ip.status.as_deref() == Some("fail") || ip.lat.is_none() || ip.lon.is_none() {
             return Err(LocationError::ProviderFailed(

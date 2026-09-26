@@ -16,7 +16,7 @@ pub fn is_scanner_available() -> bool {
             .map(|o| o.status.success())
             .unwrap_or(false)
     } else {
-        is_nmcli_available()
+        networkkit::Wifi::new().is_available()
     }
 }
 
@@ -102,38 +102,29 @@ fn parse_netsh_output(stdout: &str) -> Vec<AccessPoint> {
     finish(strongest)
 }
 
-fn parse_nmcli_output(stdout: &str) -> Vec<AccessPoint> {
+fn scan_networkkit() -> Result<Vec<AccessPoint>, LocationError> {
+    let networks = networkkit::Wifi::new()
+        .scan(true)
+        .map_err(|e| LocationError::ProviderFailed(format!("wifi scan failed: {e}")))?;
+
     let mut strongest: std::collections::HashMap<String, AccessPoint> =
         std::collections::HashMap::new();
-
-    for line in stdout.lines() {
-        let parts: Vec<&str> = line.split(':').collect();
-        if parts.len() < 7 {
-            continue;
-        }
-
-        let raw = parts[..6].join(":");
-        let Some(bssid) = normalize_bssid(&raw) else {
+    for net in networks {
+        let Some(bssid) = net.bssid.as_deref().and_then(normalize_bssid) else {
             continue;
         };
-
-        let signal_pct: i32 = match parts[6].trim().parse() {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-
-        collect(&mut strongest, bssid, signal_pct);
+        collect(&mut strongest, bssid, net.signal_pct);
     }
 
-    finish(strongest)
+    Ok(finish(strongest))
 }
 
-fn is_nmcli_available() -> bool {
-    std::process::Command::new("nmcli")
-        .args(["-t", "-f", "RUNNING", "general"])
-        .output()
-        .map(|o| o.status.success() && String::from_utf8_lossy(&o.stdout).trim() == "running")
-        .unwrap_or(false)
+pub fn scan_access_points() -> Result<Vec<AccessPoint>, LocationError> {
+    if cfg!(target_os = "windows") {
+        scan_netsh()
+    } else {
+        scan_networkkit()
+    }
 }
 
 fn scan_netsh() -> Result<Vec<AccessPoint>, LocationError> {
@@ -152,43 +143,6 @@ fn scan_netsh() -> Result<Vec<AccessPoint>, LocationError> {
     Ok(parse_netsh_output(&String::from_utf8_lossy(
         &output.stdout,
     )))
-}
-
-fn scan_nmcli() -> Result<Vec<AccessPoint>, LocationError> {
-    let output = std::process::Command::new("nmcli")
-        .args([
-            "-t",
-            "--escape",
-            "yes",
-            "-f",
-            "BSSID,SIGNAL",
-            "dev",
-            "wifi",
-            "list",
-            "--rescan",
-            "yes",
-        ])
-        .output()
-        .map_err(|e| LocationError::ProviderFailed(format!("nmcli not available: {}", e)))?;
-
-    if !output.status.success() {
-        return Err(LocationError::ProviderFailed(format!(
-            "nmcli wifi scan failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        )));
-    }
-
-    Ok(parse_nmcli_output(&String::from_utf8_lossy(
-        &output.stdout,
-    )))
-}
-
-pub fn scan_access_points() -> Result<Vec<AccessPoint>, LocationError> {
-    if cfg!(target_os = "windows") {
-        scan_netsh()
-    } else {
-        scan_nmcli()
-    }
 }
 
 #[cfg(test)]
@@ -242,23 +196,6 @@ SSID 2 : CafeGuest
         assert_eq!(aps[1].signal_pct, 55);
         assert_eq!(aps[2].bssid, "a0:f3:c1:3b:6f:91");
         assert_eq!(aps[2].signal_pct, 40);
-    }
-
-    #[test]
-    fn parses_nmcli_output_and_dedups() {
-        let sample = "\
-A0:F3:C1:3B:6F:90:82:HomeNet
-A0:F3:C1:3B:6F:90:64:HomeNet
-A0:F3:C1:3B:6F:91:40:Hidden\\ Network
-00:1C:42:1F:65:E9:55:Cafe
-not-a-mac-line
-";
-
-        let aps = parse_nmcli_output(sample);
-        assert_eq!(aps.len(), 3);
-        assert_eq!(aps[0].bssid, "a0:f3:c1:3b:6f:90");
-        assert_eq!(aps[0].signal_pct, 82);
-        assert_eq!(aps[2].bssid, "a0:f3:c1:3b:6f:91");
     }
 
     #[test]

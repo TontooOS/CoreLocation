@@ -9,7 +9,8 @@ default) and on Windows via `netsh`, without root in both cases.
 
 `WifiProvider::get_location()` runs the following steps:
 
-1. Scan access points (`scan::scan_access_points`): `nmcli` on Linux,
+1. Scan access points (`scan::scan_access_points`): NetworkKit WiFi
+   (`networkkit::Wifi::scan`) on Linux,
    `netsh wlan show networks mode=bssid` on Windows.
 2. Query Apple's WLOC service with all BSSIDs (`apple_wloc::query`) and compute
    an RSSI-weighted centroid.
@@ -35,7 +36,7 @@ Implements `LocationProvider`:
 | Method | Behavior |
 |---|---|
 | `name()` | Returns `"WiFi Positioning"` |
-| `is_available()` | True when a scanner exists (`nmcli` running on Linux, `netsh` present on Windows) |
+| `is_available()` | True when a scanner exists (NetworkKit WiFi on Linux, `netsh` present on Windows) |
 | `get_location()` | Runs the resolution chain; returns `Err` when no APs are found or both databases fail |
 
 ## scan
@@ -50,8 +51,8 @@ pub fn is_scanner_available() -> bool
 pub fn scan_access_points() -> Result<Vec<AccessPoint>, LocationError>
 ```
 
-- On Linux it runs
-  `nmcli -t --escape yes -f BSSID,SIGNAL dev wifi list --rescan yes`.
+- On Linux it scans through NetworkKit (`networkkit::Wifi::scan` with an
+  active rescan); BSSIDs without an address are skipped.
 - On Windows it runs `netsh wlan show networks mode=bssid`. Parsing is
   language independent: BSSID lines are detected by MAC address pattern and
   signal lines by percentage value.

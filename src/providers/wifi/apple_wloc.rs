@@ -253,13 +253,8 @@ pub fn query(bssids: &[String]) -> Result<Vec<WifiApResult>, LocationError> {
         return Err(LocationError::ProviderFailed("No BSSIDs provided".into()));
     }
 
-    let client = reqwest::blocking::Client::builder()
+    let resp = networkkit::http::HttpRequest::post(WLOC_URL)
         .timeout(Duration::from_secs(10))
-        .build()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
-
-    let resp = client
-        .post(WLOC_URL)
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Accept", "*/*")
         .header("Accept-Language", "en-us")
@@ -268,19 +263,16 @@ pub fn query(bssids: &[String]) -> Result<Vec<WifiApResult>, LocationError> {
             "locationd/2890.16.16 CFNetwork/1496.0.7 Darwin/23.5.0",
         )
         .body(build_request(bssids))
-        .send()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+        .send()?;
 
-    if !resp.status().is_success() {
+    if !resp.is_success() {
         return Err(LocationError::ProviderFailed(format!(
             "Apple WLOC returned status {}",
-            resp.status()
+            resp.status
         )));
     }
 
-    let bytes = resp
-        .bytes()
-        .map_err(|e| LocationError::NetworkError(e.to_string()))?;
+    let bytes = resp.bytes().to_vec();
 
     if bytes.len() <= RESPONSE_HEADER_LEN {
         return Err(LocationError::ParseError(

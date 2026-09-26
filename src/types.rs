@@ -127,6 +127,18 @@ impl fmt::Display for LocationError {
 
 impl std::error::Error for LocationError {}
 
+impl From<networkkit::types::NetworkError> for LocationError {
+    fn from(err: networkkit::types::NetworkError) -> Self {
+        use networkkit::types::NetworkError as NetErr;
+        match err {
+            NetErr::Timeout => LocationError::Timeout,
+            NetErr::ParseError(msg) => LocationError::ParseError(msg),
+            NetErr::PermissionDenied => LocationError::PermissionDenied,
+            other => LocationError::NetworkError(other.to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
