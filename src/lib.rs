@@ -71,7 +71,7 @@ impl CoreLocation {
 
     pub async fn get_location_async(&self) -> Result<Location, LocationError> {
         let this = self.clone();
-        tokio::task::spawn_blocking(move || this.get_location())
+        foundation::async_runtime::spawn_blocking(move || this.get_location())
             .await
             .map_err(|e| LocationError::ProviderFailed(e.to_string()))?
     }
@@ -81,7 +81,7 @@ impl CoreLocation {
         source: LocationSource,
     ) -> Result<Location, LocationError> {
         let this = self.clone();
-        tokio::task::spawn_blocking(move || this.get_location_from(source))
+        foundation::async_runtime::spawn_blocking(move || this.get_location_from(source))
             .await
             .map_err(|e| LocationError::ProviderFailed(e.to_string()))?
     }

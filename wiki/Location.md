@@ -75,9 +75,11 @@ true.
 ```
 
 Async variants of the methods above. They run the blocking provider chain on
-the tokio blocking thread pool (`tokio::task::spawn_blocking`), so calling them
-from an async context (GTK app event loop with a tokio runtime) never blocks
-the executor.
+the blocking thread pool via Foundation's central runtime
+(`foundation::async_runtime::spawn_blocking`), so calling them from an async
+context (GTK app event loop with a tokio runtime) never blocks the executor.
+This crate has no direct tokio dependency; the runtime version is managed by
+Foundation.
 
 - Returns `Err(LocationError::ProviderFailed)` when the blocking task panics or
   no provider with the requested source succeeds.
