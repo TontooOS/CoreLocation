@@ -26,6 +26,3 @@ path = "examples/test_async.rs"
 [dependencies]
 networkkit = { path = "../NetworkKit" }
 foundation = { path = "../Foundation" }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
