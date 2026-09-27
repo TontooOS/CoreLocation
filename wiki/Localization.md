@@ -33,7 +33,8 @@ pub fn t_fmt(key: &str, arg: &str) -> String
 | `t_fmt(key, arg)` | Like `t`, but replaces the `{}` placeholder with `arg` |
 
 Messages are parsed once on first use (`OnceLock`) and cached for the process
-lifetime.
+lifetime. Parsing uses Foundation's std-only `JSONSerialization::parse_flat_string_map`,
+so this crate has no `serde` dependency.
 
 ## Message Keys
 

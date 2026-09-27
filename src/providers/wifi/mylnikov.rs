@@ -1,21 +1,8 @@
 use crate::types::LocationError;
-use serde::Deserialize;
+use foundation::serialization::JsonDocument;
 use std::time::Duration;
 
 const API_URL: &str = "https://api.mylnikov.org/geolocation/wifi";
-
-#[derive(Deserialize)]
-struct MylnikovResponse {
-    result: i32,
-    data: Option<MylnikovData>,
-}
-
-#[derive(Deserialize)]
-struct MylnikovData {
-    lat: Option<f64>,
-    lon: Option<f64>,
-    range: Option<f64>,
-}
 
 const BASE64_ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -58,27 +45,37 @@ fn request(url: &str) -> Result<(f64, f64, f64), LocationError> {
         )));
     }
 
-    let json: MylnikovResponse = resp.json()?;
+    let body = resp.text().map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let doc = JsonDocument::parse(&body).map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let field_err = |e: foundation::error::FoundationError| LocationError::ParseError(e.to_string());
 
-    if json.result != 200 {
+    let result = doc
+        .i64_field("result")
+        .map_err(field_err)?
+        .ok_or_else(|| LocationError::ParseError("Mylnikov response missing result".into()))?;
+    if result != 200 {
         return Err(LocationError::ProviderFailed(format!(
             "Mylnikov API result {}",
-            json.result
+            result
         )));
     }
 
-    let data = json
-        .data
+    let data = doc
+        .nested("data")
+        .map_err(field_err)?
         .ok_or_else(|| LocationError::ParseError("Mylnikov response missing data".into()))?;
 
     let lat = data
-        .lat
+        .f64_field("lat")
+        .map_err(field_err)?
         .ok_or_else(|| LocationError::ParseError("Mylnikov response missing lat".into()))?;
     let lon = data
-        .lon
+        .f64_field("lon")
+        .map_err(field_err)?
         .ok_or_else(|| LocationError::ParseError("Mylnikov response missing lon".into()))?;
+    let range = data.f64_field("range").map_err(field_err)?.unwrap_or(150.0);
 
-    Ok((lat, lon, data.range.unwrap_or(150.0)))
+    Ok((lat, lon, range))
 }
 
 pub fn query_multi(aps: &[(String, i32)]) -> Result<(f64, f64, f64), LocationError> {

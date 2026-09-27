@@ -1,30 +1,22 @@
-use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
 const EN_US: &str = include_str!("../lang/en_us.json");
 const DE_DE: &str = include_str!("../lang/de_de.json");
 
-#[derive(Deserialize)]
 struct Messages {
-    no_providers_available: String,
-    provider_failed: String,
-    network_error: String,
-    parse_error: String,
-    timeout: String,
-    permission_denied: String,
+    map: HashMap<String, String>,
 }
 
 impl Messages {
+    fn parse(raw: &str) -> Self {
+        let map = foundation::serialization::JSONSerialization::parse_flat_string_map(raw)
+            .expect("built-in language file is invalid");
+        Self { map }
+    }
+
     fn get(&self, key: &str) -> Option<&str> {
-        match key {
-            "no_providers_available" => Some(&self.no_providers_available),
-            "provider_failed" => Some(&self.provider_failed),
-            "network_error" => Some(&self.network_error),
-            "parse_error" => Some(&self.parse_error),
-            "timeout" => Some(&self.timeout),
-            "permission_denied" => Some(&self.permission_denied),
-            _ => None,
-        }
+        self.map.get(key).map(String::as_str)
     }
 }
 
@@ -49,7 +41,7 @@ fn messages() -> &'static Messages {
             "de_de" => DE_DE,
             _ => EN_US,
         };
-        serde_json::from_str(raw).expect("built-in language file is invalid")
+        Messages::parse(raw)
     })
 }
 
@@ -70,11 +62,11 @@ mod tests {
 
     #[test]
     fn builtin_files_parse() {
-        let en: Messages = serde_json::from_str(EN_US).expect("en_us.json invalid");
-        let de: Messages = serde_json::from_str(DE_DE).expect("de_de.json invalid");
-        assert!(!en.no_providers_available.is_empty());
-        assert!(!de.no_providers_available.is_empty());
-        assert_ne!(en.timeout, de.timeout);
+        let en = Messages::parse(EN_US);
+        let de = Messages::parse(DE_DE);
+        assert!(!en.get("no_providers_available").unwrap_or_default().is_empty());
+        assert!(!de.get("no_providers_available").unwrap_or_default().is_empty());
+        assert_ne!(en.get("timeout"), de.get("timeout"));
     }
 
     #[test]

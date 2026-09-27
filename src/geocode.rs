@@ -1,5 +1,5 @@
 use crate::types::{Coordinates, LocationError};
-use serde::Deserialize;
+use foundation::serialization::JsonDocument;
 
 const USER_AGENT: &str = "TontooOS-CoreLocation/26.1 (TontooOS location framework)";
 
@@ -8,21 +8,6 @@ pub struct AddressInfo {
     pub city: String,
     pub country: String,
     pub region: String,
-}
-
-#[derive(Deserialize)]
-struct NominatimResponse {
-    address: Option<NominatimAddress>,
-}
-
-#[derive(Deserialize)]
-struct NominatimAddress {
-    city: Option<String>,
-    town: Option<String>,
-    village: Option<String>,
-    municipality: Option<String>,
-    state: Option<String>,
-    country: Option<String>,
 }
 
 pub fn reverse_geocode(coords: Coordinates) -> Result<AddressInfo, LocationError> {
@@ -43,22 +28,26 @@ pub fn reverse_geocode(coords: Coordinates) -> Result<AddressInfo, LocationError
         )));
     }
 
-    let json: NominatimResponse = resp.json()?;
-
-    let addr = json
-        .address
+    let body = resp.text().map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let doc = JsonDocument::parse(&body).map_err(|e| LocationError::ParseError(e.to_string()))?;
+    let addr = doc
+        .nested("address")
+        .map_err(|e| LocationError::ParseError(e.to_string()))?
         .ok_or_else(|| LocationError::ParseError("Nominatim response missing address".into()))?;
 
-    let city = addr
-        .city
-        .or(addr.town)
-        .or(addr.village)
-        .or(addr.municipality)
+    let field = |name: &str| {
+        addr.str_field(name)
+            .map_err(|e| LocationError::ParseError(e.to_string()))
+    };
+    let city = field("city")?
+        .or(field("town")?)
+        .or(field("village")?)
+        .or(field("municipality")?)
         .ok_or_else(|| LocationError::ParseError("Nominatim response missing city".into()))?;
 
     Ok(AddressInfo {
         city,
-        country: addr.country.unwrap_or_default(),
-        region: addr.state.unwrap_or_default(),
+        country: field("country")?.unwrap_or_default(),
+        region: field("state")?.unwrap_or_default(),
     })
 }

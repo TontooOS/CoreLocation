@@ -25,8 +25,7 @@ path = "examples/test_async.rs"
 
 [dependencies]
 networkkit = { path = "../NetworkKit" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+foundation = { path = "../Foundation" }
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]

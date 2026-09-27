@@ -1,17 +1,6 @@
 use crate::types::{Coordinates, Location, LocationError, LocationSource};
 use crate::providers::LocationProvider;
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct IpResponse {
-    lat: Option<f64>,
-    lon: Option<f64>,
-    city: Option<String>,
-    country: Option<String>,
-    #[serde(rename = "regionName")]
-    region_name: Option<String>,
-    status: Option<String>,
-}
+use foundation::serialization::JsonDocument;
 
 pub struct IpProvider;
 
@@ -32,23 +21,27 @@ impl IpProvider {
             )));
         }
 
-        let ip: IpResponse = resp.json()?;
+        let body = resp.text().map_err(|e| LocationError::ParseError(e.to_string()))?;
+        let doc = JsonDocument::parse(&body).map_err(|e| LocationError::ParseError(e.to_string()))?;
+        let field_err = |e: foundation::error::FoundationError| LocationError::ParseError(e.to_string());
+        let status = doc.str_field("status").map_err(field_err)?;
+        let lat = doc.f64_field("lat").map_err(field_err)?;
+        let lon = doc.f64_field("lon").map_err(field_err)?;
 
-        if ip.status.as_deref() == Some("fail") || ip.lat.is_none() || ip.lon.is_none() {
+        if status.as_deref() == Some("fail") || lat.is_none() || lon.is_none() {
             return Err(LocationError::ProviderFailed(
                 "IP API returned no data".into(),
             ));
         }
 
-        let coords = Coordinates::new(ip.lat.unwrap(), ip.lon.unwrap());
+        let coords = Coordinates::new(lat.unwrap(), lon.unwrap());
         let mut loc = Location::new(coords, 5000.0, LocationSource::Ip);
 
-        if let (Some(city), Some(country)) = (&ip.city, &ip.country) {
-            loc = loc.with_address(
-                city,
-                country,
-                ip.region_name.as_deref().unwrap_or(""),
-            );
+        let city = doc.str_field("city").map_err(field_err)?;
+        let country = doc.str_field("country").map_err(field_err)?;
+        let region = doc.str_field("regionName").map_err(field_err)?;
+        if let (Some(city), Some(country)) = (city, country) {
+            loc = loc.with_address(&city, &country, region.as_deref().unwrap_or(""));
         }
 
         Ok(loc)

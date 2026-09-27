@@ -3,9 +3,8 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
-use serde_json::json;
-
 use crate::types::LocationSource;
+use foundation::serialization::JsonObject;
 
 unsafe fn read_str(ptr: *const c_char) -> Option<String> {
     if ptr.is_null() {
@@ -23,10 +22,8 @@ fn set_error(error_out: *mut *mut c_char, message: &str) {
     }
 }
 
-fn json_ptr(value: &serde_json::Value) -> *mut c_char {
-    CString::new(value.to_string())
-        .unwrap_or_default()
-        .into_raw()
+fn json_ptr(json: &str) -> *mut c_char {
+    CString::new(json).unwrap_or_default().into_raw()
 }
 
 /// The framework version as a static C string.
@@ -89,16 +86,17 @@ pub unsafe extern "C" fn tontoo_corelocation_get_location_from(
     }
 }
 
-fn location_json(location: &crate::types::Location) -> serde_json::Value {
-    json!({
-        "latitude": location.coordinates.latitude,
-        "longitude": location.coordinates.longitude,
-        "accuracy": location.accuracy,
-        "source": location.source.to_string(),
-        "city": location.city,
-        "country": location.country,
-        "region": location.region,
-    })
+fn location_json(location: &crate::types::Location) -> String {
+    let mut obj = JsonObject::new();
+    obj.field_f64("latitude", location.coordinates.latitude)
+        .and_then(|o| o.field_f64("longitude", location.coordinates.longitude))
+        .and_then(|o| o.field_f64("accuracy", location.accuracy))
+        .ok();
+    obj.field_str("source", &location.source.to_string());
+    obj.field_opt_str("city", location.city.as_deref());
+    obj.field_opt_str("country", location.country.as_deref());
+    obj.field_opt_str("region", location.region.as_deref());
+    obj.build(false).unwrap_or_else(|_| "{}".to_string())
 }
 
 /// Free a string returned by this library.
